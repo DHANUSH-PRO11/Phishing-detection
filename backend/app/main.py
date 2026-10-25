@@ -75,6 +75,8 @@ def create_application() -> FastAPI:
         lifespan=lifespan,
     )
 
+    from backend.app.core.rate_limiter import RateLimitMiddleware
+
     # CORS configuration with explicitly approved origins
     app.add_middleware(
         CORSMiddleware,
@@ -83,6 +85,13 @@ def create_application() -> FastAPI:
         allow_methods=["GET", "POST", "DELETE", "OPTIONS"],
         allow_headers=["*"],
         expose_headers=["Content-Disposition"],
+    )
+
+    # In-memory sliding window rate limiter and security headers
+    app.add_middleware(
+        RateLimitMiddleware,
+        max_requests=settings.RATE_LIMIT_PER_MINUTE,
+        window_seconds=60,
     )
 
     # Global Sanitized Exception Handlers (Preventing stack trace and path leaks)

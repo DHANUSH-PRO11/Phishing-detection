@@ -1,4 +1,22 @@
 services:
+  db:
+    image: postgres:16-alpine
+    container_name: phishshield-postgres
+    environment:
+      POSTGRES_USER: phishuser
+      POSTGRES_PASSWORD: phishpassword
+      POSTGRES_DB: phishshield
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U phishuser -d phishshield"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
   backend:
     build:
       context: ./backend
@@ -10,12 +28,16 @@ services:
       - APP_ENV=production
       - HOST=0.0.0.0
       - PORT=8000
-      - DATABASE_URL=sqlite:////app/data/scans.db
+      - DATABASE_URL=postgresql://phishuser:phishpassword@db:5432/phishshield
       - MODEL_ARTIFACT_PATH=/app/artifacts/model.joblib
       - MODEL_METADATA_PATH=/app/artifacts/model_metadata.json
       - FEATURE_SCHEMA_PATH=/app/artifacts/feature_schema.json
-      - CORS_ORIGINS=http://localhost:5173,http://localhost:3000,http://localhost:80,http://127.0.0.1:5173,http://127.0.0.1:3000,http://127.0.0.1:80
+      - ALLOWED_ORIGINS=http://localhost:5173,http://localhost:3000,http://localhost:80,http://127.0.0.1:5173,http://127.0.0.1:3000,http://127.0.0.1:80
+    depends_on:
+      db:
+        condition: service_healthy
     volumes:
+      - backend-artifacts:/app/artifacts
       - backend-data:/app/data
     restart: unless-stopped
 
@@ -31,4 +53,6 @@ services:
     restart: unless-stopped
 
 volumes:
+  pgdata:
+  backend-artifacts:
   backend-data:
