@@ -107,6 +107,7 @@ class RiskBreakdown(BaseModel):
 
 class ScanResponse(BaseModel):
     """Complete scan assessment response model."""
+    scan_id: Optional[str] = Field(default=None, description="Unique UUID assigned to this persisted scan.")
     url: str
     normalized_url: str
     status: str = Field(
