@@ -1,0 +1,210 @@
+{
+  "feature_names": [
+    "url_length",
+    "hostname_length",
+    "path_length",
+    "query_length",
+    "dot_count",
+    "hyphen_count",
+    "underscore_count",
+    "slash_count",
+    "question_mark_count",
+    "equal_count",
+    "at_count",
+    "ampersand_count",
+    "percent_count",
+    "digit_count",
+    "digit_ratio",
+    "special_char_count",
+    "has_ip_host",
+    "has_https",
+    "has_at_symbol",
+    "subdomain_count",
+    "is_shortened",
+    "char_entropy",
+    "suspicious_keyword_count",
+    "has_abused_tld",
+    "has_double_slash_path",
+    "has_punycode",
+    "param_count",
+    "fragment_length",
+    "longest_token_length"
+  ],
+  "feature_count": 29,
+  "features": {
+    "url_length": {
+      "type": "float",
+      "description": "Total character length of the normalized URL.",
+      "rationale": "Phishing URLs frequently use unusually long paths and query strings to camouflage lures or embed redirect links.",
+      "range": "[0, 2048]"
+    },
+    "hostname_length": {
+      "type": "float",
+      "description": "Character length of the hostname/netloc.",
+      "rationale": "Long hostnames often conceal spoofed brand names within deep subdomains.",
+      "range": "[0, 255]"
+    },
+    "path_length": {
+      "type": "float",
+      "description": "Character length of the URL path component.",
+      "rationale": "Deep directory paths or embedded filenames often simulate authentic corporate portals.",
+      "range": "[0, 2048]"
+    },
+    "query_length": {
+      "type": "float",
+      "description": "Character length of the URL query string.",
+      "rationale": "Complex query strings may carry base64-encoded parameters or victim identifiers.",
+      "range": "[0, 2048]"
+    },
+    "dot_count": {
+      "type": "float",
+      "description": "Total number of dot (.) characters in the URL.",
+      "rationale": "Excessive dots typically indicate multiple subdomain layers or deceptive domain names.",
+      "range": "[0, 50]"
+    },
+    "hyphen_count": {
+      "type": "float",
+      "description": "Total number of hyphen (-) characters in the URL.",
+      "rationale": "Hyphens are widely used in spoofed domain names (e.g., 'paypal-security-update').",
+      "range": "[0, 50]"
+    },
+    "underscore_count": {
+      "type": "float",
+      "description": "Total number of underscore (_) characters in the URL.",
+      "rationale": "Underscores are uncommon in legitimate domains but appear in script parameters and phishing paths.",
+      "range": "[0, 50]"
+    },
+    "slash_count": {
+      "type": "float",
+      "description": "Total number of forward slash (/) characters in the URL.",
+      "rationale": "High slash counts indicate nested paths or path-traversal redirect constructs.",
+      "range": "[0, 50]"
+    },
+    "question_mark_count": {
+      "type": "float",
+      "description": "Number of question marks (?) in the URL.",
+      "rationale": "Legitimate URLs contain at most one delimiter for query parameters; multiple question marks indicate anomalies.",
+      "range": "[0, 10]"
+    },
+    "equal_count": {
+      "type": "float",
+      "description": "Number of equal sign (=) characters in the URL.",
+      "rationale": "Multiple key-value parameters are common in session tracking and tracking redirects.",
+      "range": "[0, 50]"
+    },
+    "at_count": {
+      "type": "float",
+      "description": "Number of @ characters in the URL.",
+      "rationale": "The @ symbol treats preceding characters as user authentication credentials, masking the true host.",
+      "range": "[0, 10]"
+    },
+    "ampersand_count": {
+      "type": "float",
+      "description": "Number of ampersand (&) characters in the URL.",
+      "rationale": "Represents the density of parameters passed in the query string.",
+      "range": "[0, 50]"
+    },
+    "percent_count": {
+      "type": "float",
+      "description": "Number of percent (%) characters in the URL.",
+      "rationale": "Percent encoding is used to obfuscate characters and bypass naive pattern matchers.",
+      "range": "[0, 100]"
+    },
+    "digit_count": {
+      "type": "float",
+      "description": "Total number of numeric digits in the URL.",
+      "rationale": "Phishing URLs often incorporate generated numeric IDs, IP addresses, or hash digests.",
+      "range": "[0, 2048]"
+    },
+    "digit_ratio": {
+      "type": "float",
+      "description": "Proportion of numeric digits relative to total URL length.",
+      "rationale": "Elevated digit proportions suggest automated domain generation or algorithmic parameters.",
+      "range": "[0.0, 1.0]"
+    },
+    "special_char_count": {
+      "type": "float",
+      "description": "Count of non-alphanumeric characters excluding standard URL delimiters.",
+      "rationale": "Unusual punctuation marks, symbols, and operators correlate with malicious payload strings.",
+      "range": "[0, 2048]"
+    },
+    "has_ip_host": {
+      "type": "float",
+      "description": "Binary flag indicating whether the host is an IPv4 or IPv6 address.",
+      "rationale": "Direct IP hosting is a strong red flag; legitimate services rarely ask users to browse directly to raw IPs.",
+      "range": "[0.0, 1.0]"
+    },
+    "has_https": {
+      "type": "float",
+      "description": "Binary flag indicating whether the URL protocol is HTTPS.",
+      "rationale": "Lack of HTTPS indicates unencrypted transport, though modern phishing also adopts free TLS certificates.",
+      "range": "[0.0, 1.0]"
+    },
+    "has_at_symbol": {
+      "type": "float",
+      "description": "Binary indicator for the presence of the '@' userinfo separator.",
+      "rationale": "Direct indicator of browser userinfo spoofing attempts.",
+      "range": "[0.0, 1.0]"
+    },
+    "subdomain_count": {
+      "type": "float",
+      "description": "Number of subdomain labels separated by dots.",
+      "rationale": "Deep subdomain chains allow attackers to create spoof domains like 'paypal.com.attacker.com'.",
+      "range": "[0, 20]"
+    },
+    "is_shortened": {
+      "type": "float",
+      "description": "Binary flag indicating whether the domain belongs to a known URL shortener.",
+      "rationale": "Shorteners mask destination domains and circumvent reputation filters.",
+      "range": "[0.0, 1.0]"
+    },
+    "char_entropy": {
+      "type": "float",
+      "description": "Shannon character entropy of the URL string.",
+      "rationale": "High entropy signifies randomness, DGA (Domain Generation Algorithms), or encoded payloads.",
+      "range": "[0.0, 8.0]"
+    },
+    "suspicious_keyword_count": {
+      "type": "float",
+      "description": "Count of keywords associated with credential harvesting and banking lures.",
+      "rationale": "Attackers frequently rely on urgency words ('login', 'verify', 'account', 'update') in paths.",
+      "range": "[0, 50]"
+    },
+    "has_abused_tld": {
+      "type": "float",
+      "description": "Binary flag indicating whether the TLD is on the high-abuse registration list.",
+      "rationale": "Free and low-cost TLDs (e.g., .tk, .xyz, .buzz) have high historical abuse concentrations.",
+      "range": "[0.0, 1.0]"
+    },
+    "has_double_slash_path": {
+      "type": "float",
+      "description": "Binary flag indicating '//' in the URL path component.",
+      "rationale": "Double slashes in paths can induce client-side redirection vulnerabilities.",
+      "range": "[0.0, 1.0]"
+    },
+    "has_punycode": {
+      "type": "float",
+      "description": "Binary flag indicating punycode ('xn--') in hostname.",
+      "rationale": "Punycode enables internationalized domain name (IDN) homograph attacks spoofing similar characters.",
+      "range": "[0.0, 1.0]"
+    },
+    "param_count": {
+      "type": "float",
+      "description": "Count of discrete query parameters.",
+      "rationale": "High parameter counts are typical in tracking, redirection, and token-passing scripts.",
+      "range": "[0, 50]"
+    },
+    "fragment_length": {
+      "type": "float",
+      "description": "Character length of the URL fragment (#).",
+      "rationale": "Client-side fragments are rarely sent to servers but can execute client script payloads.",
+      "range": "[0, 255]"
+    },
+    "longest_token_length": {
+      "type": "float",
+      "description": "Length of the longest contiguous alphanumeric segment in the URL.",
+      "rationale": "Excessively long alphanumeric tokens reflect hashes, session IDs, or encoded payloads.",
+      "range": "[0, 500]"
+    }
+  }
+}

@@ -1,0 +1,216 @@
+{
+  "audit": {
+    "source_path": "backend\\data\\raw\\urls.csv",
+    "total_raw_rows": 120,
+    "missing_rows_dropped": 0,
+    "empty_url_rows_dropped": 0,
+    "conflicted_labels_dropped": 0,
+    "duplicate_urls_removed": 0,
+    "final_clean_rows": 120,
+    "class_distribution": {
+      "legitimate_0": 60,
+      "phishing_1": 60
+    }
+  },
+  "splits": {
+    "train_records": 84,
+    "val_records": 18,
+    "test_records": 18,
+    "train_class_balance": {
+      "0": 42,
+      "1": 42
+    },
+    "val_class_balance": {
+      "1": 9,
+      "0": 9
+    },
+    "test_class_balance": {
+      "1": 9,
+      "0": 9
+    }
+  },
+  "domain_analysis": {
+    "train_unique_domains": 83,
+    "val_unique_domains": 18,
+    "test_unique_domains": 18,
+    "train_val_shared_domains": 1,
+    "train_test_shared_domains": 0,
+    "domain_leakage_risk_assessment": "Exact URLs are 100% disjoint with zero sample leakage. For popular benign domains (e.g. github.com, wikipedia.org), multiple legitimate sub-pages may naturally exist across splits. Lexical features remain valid and generalizable."
+  },
+  "feature_summary": {
+    "url_length": {
+      "mean": 55.15,
+      "std": 16.2324,
+      "min": 25.0,
+      "max": 84.0
+    },
+    "hostname_length": {
+      "mean": 24.9,
+      "std": 14.6989,
+      "min": 6.0,
+      "max": 59.0
+    },
+    "path_length": {
+      "mean": 20.5417,
+      "std": 10.0652,
+      "min": 5.0,
+      "max": 59.0
+    },
+    "query_length": {
+      "mean": 2.0833,
+      "std": 6.4542,
+      "min": 0.0,
+      "max": 40.0
+    },
+    "dot_count": {
+      "mean": 1.9833,
+      "std": 0.9525,
+      "min": 1.0,
+      "max": 5.0
+    },
+    "hyphen_count": {
+      "mean": 2.075,
+      "std": 1.9016,
+      "min": 0.0,
+      "max": 6.0
+    },
+    "underscore_count": {
+      "mean": 0.0917,
+      "std": 0.3429,
+      "min": 0.0,
+      "max": 2.0
+    },
+    "slash_count": {
+      "mean": 4.25,
+      "std": 0.9371,
+      "min": 3.0,
+      "max": 8.0
+    },
+    "question_mark_count": {
+      "mean": 0.125,
+      "std": 0.3321,
+      "min": 0.0,
+      "max": 1.0
+    },
+    "equal_count": {
+      "mean": 0.1333,
+      "std": 0.3651,
+      "min": 0.0,
+      "max": 2.0
+    },
+    "at_count": {
+      "mean": 0.0083,
+      "std": 0.0913,
+      "min": 0.0,
+      "max": 1.0
+    },
+    "ampersand_count": {
+      "mean": 0.0083,
+      "std": 0.0913,
+      "min": 0.0,
+      "max": 1.0
+    },
+    "percent_count": {
+      "mean": 0.0,
+      "std": 0.0,
+      "min": 0.0,
+      "max": 0.0
+    },
+    "digit_count": {
+      "mean": 1.55,
+      "std": 3.7704,
+      "min": 0.0,
+      "max": 24.0
+    },
+    "digit_ratio": {
+      "mean": 0.0271,
+      "std": 0.0659,
+      "min": 0.0,
+      "max": 0.4
+    },
+    "special_char_count": {
+      "mean": 0.025,
+      "std": 0.2034,
+      "min": 0.0,
+      "max": 2.0
+    },
+    "has_ip_host": {
+      "mean": 0.05,
+      "std": 0.2189,
+      "min": 0.0,
+      "max": 1.0
+    },
+    "has_https": {
+      "mean": 0.5,
+      "std": 0.5021,
+      "min": 0.0,
+      "max": 1.0
+    },
+    "has_at_symbol": {
+      "mean": 0.0083,
+      "std": 0.0913,
+      "min": 0.0,
+      "max": 1.0
+    },
+    "subdomain_count": {
+      "mean": 0.3583,
+      "std": 0.6835,
+      "min": 0.0,
+      "max": 3.0
+    },
+    "is_shortened": {
+      "mean": 0.0167,
+      "std": 0.1286,
+      "min": 0.0,
+      "max": 1.0
+    },
+    "char_entropy": {
+      "mean": 4.2172,
+      "std": 0.2632,
+      "min": 3.5737,
+      "max": 4.838
+    },
+    "suspicious_keyword_count": {
+      "mean": 0.675,
+      "std": 1.0056,
+      "min": 0.0,
+      "max": 4.0
+    },
+    "has_abused_tld": {
+      "mean": 0.4167,
+      "std": 0.4951,
+      "min": 0.0,
+      "max": 1.0
+    },
+    "has_double_slash_path": {
+      "mean": 0.0,
+      "std": 0.0,
+      "min": 0.0,
+      "max": 0.0
+    },
+    "has_punycode": {
+      "mean": 0.0083,
+      "std": 0.0913,
+      "min": 0.0,
+      "max": 1.0
+    },
+    "param_count": {
+      "mean": 0.1333,
+      "std": 0.3651,
+      "min": 0.0,
+      "max": 2.0
+    },
+    "fragment_length": {
+      "mean": 0.0,
+      "std": 0.0,
+      "min": 0.0,
+      "max": 0.0
+    },
+    "longest_token_length": {
+      "mean": 9.7917,
+      "std": 3.9766,
+      "min": 6.0,
+      "max": 40.0
+    }
+  }
+}
