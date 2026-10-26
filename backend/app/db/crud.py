@@ -10,7 +10,7 @@ import json
 import uuid
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional, Tuple
-from sqlalchemy import func, desc, asc
+from sqlalchemy import func, desc, asc, case
 from sqlalchemy.orm import Session
 
 from backend.app.db.models import ScanRecord
@@ -80,8 +80,17 @@ def list_scans(
 
     total_count = query.count()
 
-    # 4. Sorting
-    sort_column = getattr(ScanRecord, sort_by, ScanRecord.created_at)
+    # 4. Sorting with strict column whitelisting (prevents reflection/injection exceptions)
+    allowed_columns = {
+        "created_at": ScanRecord.created_at,
+        "risk_score": ScanRecord.risk_score,
+        "url": ScanRecord.url,
+        "domain": ScanRecord.domain,
+        "status": ScanRecord.status,
+        "risk_category": ScanRecord.risk_category,
+        "model_probability": ScanRecord.model_probability,
+    }
+    sort_column = allowed_columns.get(str(sort_by).lower(), ScanRecord.created_at)
     if sort_order.lower() == "asc":
         query = query.order_by(asc(sort_column))
     else:
@@ -106,7 +115,17 @@ def get_aggregate_statistics(db: Session) -> Dict[str, Any]:
     Computes real aggregate statistics directly from persisted records.
     Never uses hardcoded or fabricated statistics.
     """
-    total_scans = db.query(func.count(ScanRecord.id)).scalar() or 0
+    summary = (
+        db.query(
+            func.count(ScanRecord.id).label("total"),
+            func.coalesce(func.sum(case((ScanRecord.is_phishing == True, 1), else_=0)), 0).label("phishing"),
+            func.coalesce(func.sum(case((ScanRecord.is_inconclusive == True, 1), else_=0)), 0).label("inconclusive"),
+            func.coalesce(func.avg(ScanRecord.risk_score), 0.0).label("avg_risk"),
+        )
+        .first()
+    )
+
+    total_scans = int(summary.total or 0) if summary else 0
 
     if total_scans == 0:
         return {
@@ -120,6 +139,11 @@ def get_aggregate_statistics(db: Session) -> Dict[str, Any]:
             "recent_scans_timeline": [],
             "top_flagged_domains": [],
         }
+
+    phishing_count = int(summary.phishing or 0)
+    inconclusive_count = int(summary.inconclusive or 0)
+    legitimate_count = max(0, total_scans - phishing_count - inconclusive_count)
+    avg_risk = float(summary.avg_risk or 0.0)
 
     # Status distribution
     status_counts = (
@@ -136,14 +160,6 @@ def get_aggregate_statistics(db: Session) -> Dict[str, Any]:
         .all()
     )
     cat_dist = {cat: count for cat, count in cat_counts}
-
-    # Counts
-    phishing_count = db.query(func.count(ScanRecord.id)).filter(ScanRecord.is_phishing == True).scalar() or 0
-    inconclusive_count = db.query(func.count(ScanRecord.id)).filter(ScanRecord.is_inconclusive == True).scalar() or 0
-    legitimate_count = total_scans - phishing_count - inconclusive_count
-
-    # Average risk score
-    avg_risk = db.query(func.avg(ScanRecord.risk_score)).scalar() or 0.0
 
     # Top high-risk domains
     top_flagged = (

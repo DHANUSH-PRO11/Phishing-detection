@@ -61,6 +61,12 @@ def create_application() -> FastAPI:
     # Ensure database schema is created
     init_db()
 
+    # Disable interactive documentation in production to prevent endpoint reconnaissance
+    is_production = settings.APP_ENV.lower() == "production" and not settings.DEBUG
+    docs_url = None if is_production else "/docs"
+    redoc_url = None if is_production else "/redoc"
+    openapi_url = None if is_production else "/openapi.json"
+
     app = FastAPI(
         title=settings.APP_NAME,
         description=(
@@ -69,18 +75,44 @@ def create_application() -> FastAPI:
             "0-100 risk scoring with plain-English explainability."
         ),
         version="1.0.0",
-        docs_url="/docs",
-        redoc_url="/redoc",
-        openapi_url="/openapi.json",
+        docs_url=docs_url,
+        redoc_url=redoc_url,
+        openapi_url=openapi_url,
         lifespan=lifespan,
     )
 
+    from starlette.middleware.base import BaseHTTPMiddleware
     from backend.app.core.rate_limiter import RateLimitMiddleware
 
+    # Request body size limiting middleware (defense against DoS / resource exhaustion)
+    class RequestSizeLimitMiddleware(BaseHTTPMiddleware):
+        def __init__(self, app_inst, max_bytes: int = 1_048_576):
+            super().__init__(app_inst)
+            self.max_bytes = max_bytes
+
+        async def dispatch(self, request: Request, call_next):
+            content_length = request.headers.get("content-length")
+            if content_length:
+                try:
+                    if int(content_length) > self.max_bytes:
+                        return JSONResponse(
+                            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+                            content={
+                                "error": "Payload Too Large",
+                                "detail": f"Request body exceeds the maximum permitted size of {self.max_bytes // 1024} KB.",
+                            },
+                        )
+                except ValueError:
+                    pass
+            return await call_next(request)
+
+    app.add_middleware(RequestSizeLimitMiddleware, max_bytes=1_048_576)
+
     # CORS configuration with explicitly approved origins
+    cors_origins = [o for o in settings.ALLOWED_ORIGINS if o != "*"] if "*" in settings.ALLOWED_ORIGINS else settings.ALLOWED_ORIGINS
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=settings.ALLOWED_ORIGINS,
+        allow_origins=cors_origins or ["http://localhost:5173", "http://localhost:3000"],
         allow_credentials=True,
         allow_methods=["GET", "POST", "DELETE", "OPTIONS"],
         allow_headers=["*"],

@@ -233,25 +233,123 @@ def calculate_entropy(text: str) -> float:
     return round(entropy, 4)
 
 
+def extract_pure_hostname(authority_or_url: str) -> str:
+    """
+    Safely extracts the pure hostname without userinfo credentials, port, or IPv6 brackets.
+    Handles user:pass@host:port, [::1]:port, and standard hostnames cleanly without network calls.
+    """
+    if not authority_or_url:
+        return ""
+    clean = authority_or_url.strip()
+    # Strip URL scheme if whole URL was provided
+    if "://" in clean:
+        clean = clean.split("://", 1)[1].split("/", 1)[0].split("?", 1)[0].split("#", 1)[0]
+    elif "/" in clean:
+        clean = clean.split("/", 1)[0].split("?", 1)[0].split("#", 1)[0]
+
+    # Strip user credentials preceding '@'
+    if "@" in clean:
+        clean = clean.split("@")[-1]
+
+    # Handle bracketed IPv6 address e.g. [::1]:8080 or [::1]
+    if clean.startswith("["):
+        bracket_end = clean.find("]")
+        if bracket_end != -1:
+            return clean[1:bracket_end]
+        return clean.lstrip("[").split(":")[0]
+
+    # Strip port if present
+    if ":" in clean:
+        # If multiple colons without brackets, it could be a raw IPv6 address (e.g. ::1)
+        if clean.count(":") > 1:
+            return clean
+        return clean.split(":")[0]
+
+    return clean
+
+
+def get_ip_address_obj(host: str) -> Optional[ipaddress.IPv4Address | ipaddress.IPv6Address]:
+    """Safely parses an IP address object from a host string, returning None if not an IP."""
+    pure = extract_pure_hostname(host)
+    if not pure:
+        return None
+    try:
+        return ipaddress.ip_address(pure)
+    except ValueError:
+        return None
+
+
 def is_ip_host(host: str) -> bool:
     """
     Check if a given host string represents an IPv4 or IPv6 address.
-    Safely strips ports and bracket wrappers without network calls.
+    Robustly handles user credentials (user:pass@host), ports, and bracket wrappers.
     """
-    if not host:
-        return False
-    if host.startswith("["):
-        host_clean = host.split("]")[0].lstrip("[")
-    elif ":" in host and host.count(":") == 1:
-        host_clean = host.split(":")[0]
-    else:
-        host_clean = host.strip("[]")
+    return get_ip_address_obj(host) is not None
 
-    try:
-        ipaddress.ip_address(host_clean)
+
+def is_private_or_loopback_ip(host: str) -> bool:
+    """
+    Check if a host represents a loopback, private, link-local, or cloud metadata address.
+    Defends against SSRF, intranet probes, and cloud metadata exploitation (169.254.169.254).
+    """
+    ip_obj = get_ip_address_obj(host)
+    if ip_obj is not None:
+        return (
+            ip_obj.is_private or
+            ip_obj.is_loopback or
+            ip_obj.is_link_local or
+            ip_obj.is_reserved or
+            ip_obj.is_unspecified
+        )
+    pure = extract_pure_hostname(host).lower()
+    return pure in ("localhost", "0.0.0.0", "127.0.0.1", "::1")
+
+
+def check_punycode_or_idn(host: str, clean_url: str) -> bool:
+    """
+    Detects Punycode or Internationalized Domain Name (IDN) homograph attacks.
+    Checks for explicit 'xn--' prefix as well as raw Unicode homoglyphs in hostname.
+    """
+    if "xn--" in clean_url.lower():
         return True
-    except ValueError:
-        return False
+    pure = extract_pure_hostname(host)
+    if "xn--" in pure.lower():
+        return True
+    # Test if hostname contains non-ASCII characters or encodes to IDNA 'xn--'
+    if any(ord(c) > 127 for c in pure):
+        return True
+    try:
+        idna_encoded = pure.encode("idna").decode("ascii")
+        if "xn--" in idna_encoded.lower():
+            return True
+    except Exception:
+        if any(ord(c) > 127 for c in pure):
+            return True
+    return False
+
+
+def redact_url_credentials(url_or_netloc: str) -> str:
+    """
+    Redacts sensitive user credentials (passwords) from URL authority components
+    to prevent logging, storage, or reflection of plaintext secrets.
+    """
+    if not url_or_netloc:
+        return ""
+    # Pattern to match scheme://user:pass@host or user:pass@host
+    def _sub(match):
+        prefix = match.group(1) or ""
+        user = match.group(2) or ""
+        password = match.group(3)
+        host_part = match.group(4) or ""
+        if password is not None:
+            return f"{prefix}{user}:[REDACTED]@{host_part}"
+        elif user:
+            return f"{prefix}[REDACTED]@{host_part}"
+        return match.group(0)
+
+    pattern = r"^([a-zA-Z][a-zA-Z0-9+.-]*://)?([^/:@]+)(?::([^@]+))?@(.+)$"
+    return re.sub(pattern, _sub, url_or_netloc)
+
 
 
 def normalize_url_string(raw_url: Any) -> str:
@@ -320,10 +418,11 @@ class FeatureExtractor:
         # Enforce offline mode by disabling remote public suffix list fetching
         self.extractor = tldextract.TLDExtract(cache_dir=None, suffix_list_urls=None)
 
-    def extract(self, url: Any) -> Dict[str, float]:
+    def extract(self, url: Any, tld_result: Optional[Any] = None) -> Dict[str, float]:
         """
         Extract numeric feature values for machine learning inference and training.
         Guaranteed to return all defined FEATURE_NAMES with float values, even for malformed inputs.
+        Optionally accepts pre-computed tld_result to eliminate duplicate extraction overhead.
         """
         clean_url = normalize_url_string(url)
         if not clean_url:
@@ -332,11 +431,14 @@ class FeatureExtractor:
 
         parsed = _safe_parse_url(clean_url)
 
-        try:
-            extracted = self.extractor(clean_url)
-        except Exception:
-            # Fallback if tldextract fails on non-standard strings
-            extracted = tldextract.ExtractResult("", "", "")
+        if tld_result is not None:
+            extracted = tld_result
+        else:
+            try:
+                extracted = self.extractor(clean_url)
+            except Exception:
+                # Fallback if tldextract fails on non-standard strings
+                extracted = tldextract.ExtractResult("", "", "")
 
         host = parsed.netloc or ""
         path = parsed.path or ""
@@ -383,7 +485,7 @@ class FeatureExtractor:
         is_shortened = 1.0 if (domain_name.lower() in KNOWN_SHORTENERS or host.lower() in KNOWN_SHORTENERS) else 0.0
         has_abused_tld = 1.0 if suffix in HIGH_ABUSE_TLDS else 0.0
         has_double_slash_path = 1.0 if "//" in path else 0.0
-        has_punycode = 1.0 if ("xn--" in host.lower() or "xn--" in clean_url.lower()) else 0.0
+        has_punycode = 1.0 if check_punycode_or_idn(host, clean_url) else 0.0
 
         # Suspicious keyword matching across path, query, and subdomain
         searchable_text = f"{path.lower()} {query.lower()} {subdomain_str.lower()}"
@@ -445,6 +547,7 @@ class FeatureExtractor:
         features = self.extract(clean_url)
 
         host = parsed.netloc or ""
+        pure_host = extract_pure_hostname(host)
         reg_domain = f"{extracted.domain}.{extracted.suffix}" if extracted.suffix else extracted.domain
 
         flags: List[Dict[str, str]] = []
@@ -452,8 +555,14 @@ class FeatureExtractor:
             flags.append({
                 "rule": "IP_HOST_DETECTED",
                 "severity": "HIGH",
-                "message": f"URL hostname '{host}' is a raw IP address instead of a registered domain."
+                "message": f"URL hostname '{pure_host}' is a raw IP address instead of a registered domain."
             })
+            if is_private_or_loopback_ip(pure_host):
+                flags.append({
+                    "rule": "INTERNAL_OR_METADATA_IP_HOST",
+                    "severity": "CRITICAL",
+                    "message": f"URL specifies a private, loopback, or cloud metadata address ('{pure_host}')."
+                })
         if features["has_at_symbol"] == 1.0:
             flags.append({
                 "rule": "CREDENTIAL_AT_SYMBOL",
@@ -464,13 +573,13 @@ class FeatureExtractor:
             flags.append({
                 "rule": "PUNYCODE_HOMOGRAPH",
                 "severity": "HIGH",
-                "message": "Hostname contains Punycode ('xn--'), frequently utilized in internationalized character spoofing attacks."
+                "message": "Hostname contains Punycode ('xn--') or Unicode characters, frequently utilized in character spoofing attacks."
             })
         if features["is_shortened"] == 1.0:
             flags.append({
                 "rule": "LINK_SHORTENER",
                 "severity": "MEDIUM",
-                "message": f"URL uses a known shortener service ({host}), concealing the ultimate destination URL."
+                "message": f"URL uses a known shortener service ({pure_host}), concealing the ultimate destination URL."
             })
         if features["has_abused_tld"] == 1.0:
             flags.append({

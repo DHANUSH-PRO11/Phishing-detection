@@ -26,6 +26,8 @@ from backend.app.ml.features import (
     FeatureExtractor,
     normalize_url_string,
     is_ip_host,
+    extract_pure_hostname,
+    redact_url_credentials,
 )
 from backend.app.ml.model_loader import (
     load_model,
@@ -65,11 +67,19 @@ class ScannerService:
         if not clean_url:
             raise ValueError("URL string cannot be empty.")
 
-        # Reject unsupported schemes
+        import re
+        clean_url = re.sub(r"[\x00-\x1f\x7f-\x9f]", "", clean_url)
+        if not clean_url:
+            raise ValueError("URL contains only unprintable control characters.")
+
+        # Reject unsupported schemes: only standard HTTP/HTTPS web URLs can be analyzed
         lower_url = clean_url.lower()
-        unsupported = ("javascript:", "data:", "file:", "vbscript:", "about:", "blob:")
-        if lower_url.startswith(unsupported):
-            raise ValueError("Unsupported URI scheme. Only standard HTTP/HTTPS web URLs can be analyzed.")
+        if ":" in lower_url:
+            scheme_candidate = lower_url.split(":", 1)[0].strip()
+            if "/" not in scheme_candidate and scheme_candidate not in ("http", "https"):
+                raise ValueError(
+                    f"Unsupported URI scheme '{scheme_candidate}'. Only standard HTTP/HTTPS web URLs can be analyzed."
+                )
 
         normalized_url = normalize_url_string(clean_url)
         if not normalized_url:
@@ -81,14 +91,30 @@ class ScannerService:
         except Exception:
             parsed = urllib.parse.urlsplit(normalized_url)
 
+        # Enforce valid scheme
+        if parsed.scheme.lower() not in ("http", "https"):
+            raise ValueError(
+                f"Unsupported URI scheme '{parsed.scheme}'. Only standard HTTP/HTTPS web URLs can be analyzed."
+            )
+
+        # Enforce non-empty hostname/netloc
+        pure_host = extract_pure_hostname(parsed.netloc or "")
+        if not pure_host:
+            raise ValueError("Provided URL is missing a valid destination hostname or authority.")
+
         extracted = self.tld_extractor(normalized_url)
-        host = parsed.netloc or ""
+        raw_netloc = parsed.netloc or ""
         reg_domain = f"{extracted.domain}.{extracted.suffix}" if extracted.suffix else extracted.domain
+
+        # Sanitize credentials from persisted netloc and components
+        sanitized_netloc = redact_url_credentials(raw_netloc)
+        sanitized_raw_url = redact_url_credentials(raw_url)
+        sanitized_normalized_url = redact_url_credentials(normalized_url)
 
         components = URLComponents(
             scheme=parsed.scheme,
-            netloc=host,
-            domain=reg_domain,
+            netloc=sanitized_netloc,
+            domain=reg_domain or pure_host,
             subdomain=extracted.subdomain,
             suffix=extracted.suffix,
             path=parsed.path,
@@ -96,8 +122,8 @@ class ScannerService:
             fragment=parsed.fragment,
         )
 
-        # 3. Extract exact numeric feature schema
-        features = self.feature_extractor.extract(normalized_url)
+        # 3. Extract exact numeric feature schema reusing pre-computed TLD extraction
+        features = self.feature_extractor.extract(normalized_url, tld_result=extracted)
 
         # 4. Perform ML model inference using serialized champion model
         # Explicit error reporting if model has not been trained
@@ -129,10 +155,10 @@ class ScannerService:
         )
         feature_details = ExplanationEngine.compile_feature_details(features)
 
-        # 8. Assemble Complete Structured Response
+        # 8. Assemble Complete Structured Response (with credentials redacted)
         response = ScanResponse(
-            url=raw_url,
-            normalized_url=normalized_url,
+            url=sanitized_raw_url,
+            normalized_url=sanitized_normalized_url,
             status=status,
             is_phishing=is_phish,
             is_inconclusive=is_inconc,

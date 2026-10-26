@@ -44,6 +44,13 @@ class ExplanationEngine:
         findings: List[ExplanationItem] = []
 
         host = components.get("netloc", "")
+        from backend.app.ml.features import (
+            extract_pure_hostname,
+            is_private_or_loopback_ip,
+            redact_url_credentials,
+        )
+        pure_host = extract_pure_hostname(host)
+        sanitized_host = redact_url_credentials(host)
         domain = components.get("domain", "")
         suffix = components.get("suffix", "")
         path = components.get("path", "")
@@ -54,9 +61,17 @@ class ExplanationEngine:
                 rule="RAW_IP_HOST",
                 title="Direct IP Address Hostname Detected",
                 severity="CRITICAL",
-                message=f"The URL specifies a direct IP address ('{host}') rather than a registered domain name.",
+                message=f"The URL specifies a direct IP address ('{pure_host}') rather than a registered domain name.",
                 threat_context="Legitimate public organizations and services use registered domain names. Phishing campaigns frequently deploy on direct IP addresses to avoid domain registration records or DNS blacklists."
             ))
+            if is_private_or_loopback_ip(pure_host):
+                findings.append(ExplanationItem(
+                    rule="INTERNAL_OR_METADATA_IP_HOST",
+                    title="Internal / Loopback / Cloud Metadata IP Address Hostname",
+                    severity="CRITICAL",
+                    message=f"The URL specifies a private, loopback, or cloud metadata address ('{pure_host}').",
+                    threat_context="Threat actors exploit internal and link-local IP formats (e.g. 127.0.0.1, 169.254.169.254, RFC1918) for Server-Side Request Forgery (SSRF) and intranet infrastructure reconnaissance."
+                ))
 
         # 2. Punycode / Homograph Attack Indicator
         if features.get("has_punycode", 0.0) == 1.0:
@@ -64,7 +79,7 @@ class ExplanationEngine:
                 rule="PUNYCODE_HOMOGRAPH",
                 title="Punycode / IDN Homograph Sequence Observed",
                 severity="HIGH",
-                message="Hostname contains 'xn--', indicating an Internationalized Domain Name (IDN).",
+                message="Hostname contains 'xn--' or Unicode characters, indicating an Internationalized Domain Name (IDN) or homograph attack.",
                 threat_context="Attackers exploit lookalike Unicode characters (e.g. Cyrillic 'а' replacing Latin 'a') to visually spoof brand domains while actually resolving to attacker-controlled infrastructure."
             ))
 
@@ -72,9 +87,9 @@ class ExplanationEngine:
         if features.get("has_at_symbol", 0.0) == 1.0 or features.get("at_count", 0.0) > 0:
             findings.append(ExplanationItem(
                 rule="CREDENTIAL_USERINFO_DELIMITER",
-                title="Deceptive '@' Character Present",
+                title="Deceptive User Credentials / '@' Character Present",
                 severity="HIGH",
-                message="The URL contains an '@' character within the authority segment.",
+                message="The URL contains an '@' character within the authority segment to obscure the destination.",
                 threat_context="Standard RFC specifications interpret text preceding '@' as user credentials, not the hostname. Attackers use this to display a fake brand name before the '@' while directing victims to the domain after the '@'."
             ))
 
@@ -84,7 +99,7 @@ class ExplanationEngine:
                 rule="LINK_SHORTENER_OBSCURATION",
                 title="URL Shortening Service Detected",
                 severity="MEDIUM",
-                message=f"The domain '{host}' is a known URL shortening or redirection proxy.",
+                message=f"The domain '{pure_host}' is a known URL shortening or redirection proxy.",
                 threat_context="Shorteners conceal the true destination hostname, preventing users and basic email filters from inspecting the landing site before click-through."
             ))
 

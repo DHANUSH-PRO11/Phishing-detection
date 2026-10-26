@@ -20,13 +20,31 @@ if settings.DATABASE_URL.startswith("sqlite"):
     db_path = Path(db_path_str).resolve()
     db_path.parent.mkdir(parents=True, exist_ok=True)
 
-connect_args = {"check_same_thread": False} if settings.DATABASE_URL.startswith("sqlite") else {}
+connect_args: dict[str, Any] = {}
+engine_kwargs: dict[str, Any] = {
+    "echo": settings.DEBUG,
+    "pool_pre_ping": True,
+}
+
+if settings.DATABASE_URL.startswith("sqlite"):
+    connect_args["check_same_thread"] = False
+    engine_kwargs["connect_args"] = connect_args
+    if not settings.DATABASE_URL.endswith(":memory:"):
+        from sqlalchemy.pool import QueuePool
+        engine_kwargs["poolclass"] = QueuePool
+        engine_kwargs["pool_size"] = settings.DB_POOL_SIZE
+        engine_kwargs["max_overflow"] = settings.DB_MAX_OVERFLOW
+        engine_kwargs["pool_timeout"] = settings.DB_POOL_TIMEOUT
+else:
+    # PostgreSQL / MySQL
+    engine_kwargs["pool_size"] = settings.DB_POOL_SIZE
+    engine_kwargs["max_overflow"] = settings.DB_MAX_OVERFLOW
+    engine_kwargs["pool_timeout"] = settings.DB_POOL_TIMEOUT
+    engine_kwargs["pool_recycle"] = 1800
 
 engine = create_engine(
     settings.DATABASE_URL,
-    connect_args=connect_args,
-    pool_pre_ping=True,
-    echo=settings.DEBUG,
+    **engine_kwargs
 )
 
 # Enable foreign keys for SQLite

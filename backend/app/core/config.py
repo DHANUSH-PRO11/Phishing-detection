@@ -30,6 +30,9 @@ class Settings(BaseSettings):
 
     # Persistence: SQLite default, swappable for PostgreSQL
     DATABASE_URL: str = Field(default="sqlite:///./backend/data/phishing_detector.db")
+    DB_POOL_SIZE: int = Field(default=20)
+    DB_MAX_OVERFLOW: int = Field(default=30)
+    DB_POOL_TIMEOUT: int = Field(default=30)
 
     # ML Artifacts and Reports
     MODEL_DIR: str = Field(default="backend/artifacts")

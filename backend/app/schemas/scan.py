@@ -25,11 +25,22 @@ class ScanRequest(BaseModel):
         clean = v.strip()
         if not clean:
             raise ValueError("URL cannot be empty or whitespace.")
-        # Reject dangerous schemes that cannot be scanned as standard web resources
+        # Reject control characters and null bytes
+        import re
+        clean = re.sub(r"[\x00-\x1f\x7f-\x9f]", "", clean)
+        if not clean:
+            raise ValueError("URL contains only control characters.")
+
+        # Reject unsupported schemes: only http and https are permitted
         lower = clean.lower()
-        unsupported = ("javascript:", "data:", "file:", "vbscript:", "about:", "blob:")
-        if lower.startswith(unsupported):
-            raise ValueError(f"Unsupported URI scheme. Only HTTP and HTTPS web URLs are permitted.")
+        if ":" in lower:
+            scheme_candidate = lower.split(":", 1)[0].strip()
+            # If it's a URI scheme (no slashes before colon)
+            if "/" not in scheme_candidate:
+                if scheme_candidate not in ("http", "https"):
+                    raise ValueError(
+                        f"Unsupported URI scheme '{scheme_candidate}'. Only HTTP and HTTPS web URLs are permitted."
+                    )
         return clean
 
 

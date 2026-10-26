@@ -23,6 +23,19 @@ from backend.app.schemas.history import (
 router = APIRouter(tags=["History"])
 
 
+def sanitize_csv_cell(value: Any) -> str:
+    """
+    Sanitizes string cells written to CSV to neutralize formula injection (CWE-1236).
+    If a cell starts with '=', '+', '-', '@', tab, or carriage return, prepends a single quote.
+    """
+    if value is None:
+        return ""
+    val_str = str(value)
+    if val_str and val_str[0] in ("=", "+", "-", "@", "\t", "\r"):
+        return f"'{val_str}"
+    return val_str
+
+
 @router.get(
     "/history",
     response_model=PaginatedHistoryResponse,
@@ -34,7 +47,11 @@ def get_scan_history(
     search: Optional[str] = Query(default=None, description="Search keyword in URL or domain."),
     status: Optional[str] = Query(default=None, description="Filter by status ('Potentially Phishing', etc.)."),
     risk_category: Optional[str] = Query(default=None, description="Filter by risk category ('Low Risk', etc.)."),
-    sort_by: str = Query(default="created_at", description="Field to sort by ('created_at', 'risk_score')."),
+    sort_by: str = Query(
+        default="created_at",
+        pattern="^(created_at|risk_score|url|domain|status|risk_category|model_probability)$",
+        description="Field to sort by ('created_at', 'risk_score', 'url', 'domain', 'status', 'risk_category')."
+    ),
     sort_order: str = Query(default="desc", pattern="^(asc|desc)$", description="Sort order ('asc' or 'desc')."),
     db: Session = Depends(get_db),
 ) -> PaginatedHistoryResponse:
@@ -92,6 +109,7 @@ def export_history_csv(
 ) -> Response:
     """
     Streams filtered scan history as a downloaded CSV file.
+    Sanitizes all cells to prevent formula injection (CWE-1236).
     """
     records, _ = crud.list_scans(
         db,
@@ -113,15 +131,15 @@ def export_history_csv(
 
     for r in records:
         writer.writerow([
-            r.scan_id,
-            r.created_at.isoformat() if r.created_at else "",
-            r.url,
-            r.domain,
-            r.status,
+            sanitize_csv_cell(r.scan_id),
+            sanitize_csv_cell(r.created_at.isoformat() if r.created_at else ""),
+            sanitize_csv_cell(r.url),
+            sanitize_csv_cell(r.domain),
+            sanitize_csv_cell(r.status),
             r.risk_score,
-            r.risk_category,
+            sanitize_csv_cell(r.risk_category),
             round(r.model_probability, 4),
-            r.model_name,
+            sanitize_csv_cell(r.model_name),
         ])
 
     csv_data = output.getvalue()
@@ -130,6 +148,18 @@ def export_history_csv(
         media_type="text/csv",
         headers={"Content-Disposition": "attachment; filename=phishing_scan_history.csv"}
     )
+
+
+def _validate_scan_id_format(scan_id: str) -> None:
+    """Validates that scan_id conforms to UUID format."""
+    import uuid
+    try:
+        uuid.UUID(str(scan_id))
+    except (ValueError, AttributeError):
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Scan record with ID '{scan_id}' not found."
+        )
 
 
 @router.get(
@@ -142,6 +172,7 @@ def get_scan_details(scan_id: str, db: Session = Depends(get_db)) -> ScanDetailI
     Returns full details for a scan record, including deserialized components,
     explanations, and features.
     """
+    _validate_scan_id_format(scan_id)
     record = crud.get_scan_by_id(db, scan_id)
     if not record:
         raise HTTPException(
@@ -183,6 +214,7 @@ def delete_scan(scan_id: str, db: Session = Depends(get_db)) -> DeleteResponse:
     """
     Deletes a historical scan record from the database.
     """
+    _validate_scan_id_format(scan_id)
     success = crud.delete_scan_by_id(db, scan_id)
     if not success:
         raise HTTPException(

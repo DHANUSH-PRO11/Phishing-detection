@@ -1,0 +1,35 @@
+{
+  "normal_urls": [
+    "https://www.google.com/search?q=cybersecurity+training",
+    "https://github.com/torvalds/linux/commit/123456789",
+    "https://en.wikipedia.org/wiki/Phishing",
+    "https://developer.mozilla.org/en-US/docs/Web/HTTP/Overview",
+    "https://fastapi.tiangolo.com/tutorial/bigger-applications/",
+    "https://docs.python.org/3/library/urllib.parse.html",
+    "https://news.ycombinator.com/item?id=38472910",
+    "https://aws.amazon.com/security/introduction/",
+    "https://kubernetes.io/docs/concepts/services-networking/ingress/",
+    "https://nginx.org/en/docs/http/ngx_http_upstream_module.html"
+  ],
+  "phishing_lures": [
+    "http://paypal.verification-secure-account-update.xyz/login.php?token=482910",
+    "http://appleid.apple.com-manage-security-token.club/auth/signin",
+    "http://198.51.100.42/banking/wells-fargo-online-update.html",
+    "http://bit.ly/3xX9AuthLureSecurityVerificationToken429",
+    "http://microsoft-office365-password-reset-notice.buzz/login.php",
+    "http://chase-security-alert-verification.top/auth/verify?session=92834",
+    "http://netflix-billing-update-failure-notice.rest/renew/card.html",
+    "http://binance-security-verification-otp.work/wallet/login.html"
+  ],
+  "large_valid_urls": [
+    "https://example.com/deep/path/resource/archive/v2/items/catalog/query/lookup?session=a1b2c3d4e5f6a1b2c3d4e5f6&filter=category%3Dsecurity%26tag%3Dphishing%26mode%3Dstrict%26lang%3Den&tracking_id=abcdef1234567890abcdef1234567890abcdef1234567890&token=xyz987654321xyz987654321xyz987654321&origin=web_search_portal_v3_production_cluster_east",
+    "https://cdn.example.org/assets/bundles/2026/october/release/build/scripts/module/vendor-chunks-1234567890abcdef.js?hash=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855&cache_bust=1761480000&compress=gzip&integrity=sha256"
+  ],
+  "invalid_urls": [
+    "ftp://unsupported-scheme.com/download/file.iso",
+    "javascript:void(0)",
+    "http://",
+    "https://",
+    "http:///no-hostname"
+  ]
+}

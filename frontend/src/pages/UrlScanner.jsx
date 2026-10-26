@@ -59,11 +59,16 @@ export default function UrlScanner({ onScanComplete, onViewDetails }) {
       return 'URL exceeds maximum permitted length of 2048 characters.';
     }
     const lower = trimmed.toLowerCase();
-    const unsupported = ['javascript:', 'data:', 'file:', 'vbscript:', 'about:', 'blob:'];
-    for (const scheme of unsupported) {
-      if (lower.startsWith(scheme)) {
-        return `Unsupported URI scheme "${scheme}". Only HTTP and HTTPS URLs can be evaluated.`;
+    if (lower.includes(':')) {
+      const candidate = lower.split(':', 1)[0].trim();
+      if (!candidate.includes('/') && candidate !== 'http' && candidate !== 'https') {
+        return `Unsupported URI scheme "${candidate}". Only HTTP and HTTPS web URLs can be evaluated.`;
       }
+    }
+    // Check for empty destination host
+    const stripped = trimmed.replace(/^[a-zA-Z][a-zA-Z0-9+.-]*:\/\//, '').split(/[/?#]/)[0].trim();
+    if (!stripped) {
+      return 'URL must include a valid destination hostname or domain.';
     }
     return '';
   };

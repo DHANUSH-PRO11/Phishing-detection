@@ -3,15 +3,16 @@ services:
     image: postgres:16-alpine
     container_name: phishshield-postgres
     environment:
-      POSTGRES_USER: phishuser
-      POSTGRES_PASSWORD: phishpassword
-      POSTGRES_DB: phishshield
+      POSTGRES_USER: ${POSTGRES_USER:-phishuser}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-phishpassword}
+      POSTGRES_DB: ${POSTGRES_DB:-phishshield}
     ports:
-      - "5432:5432"
+      # Bind to localhost only to prevent external network exposure
+      - "127.0.0.1:5432:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U phishuser -d phishshield"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-phishuser} -d ${POSTGRES_DB:-phishshield}"]
       interval: 5s
       timeout: 5s
       retries: 5
@@ -28,7 +29,7 @@ services:
       - APP_ENV=production
       - HOST=0.0.0.0
       - PORT=8000
-      - DATABASE_URL=postgresql://phishuser:phishpassword@db:5432/phishshield
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-phishuser}:${POSTGRES_PASSWORD:-phishpassword}@db:5432/${POSTGRES_DB:-phishshield}
       - MODEL_ARTIFACT_PATH=/app/artifacts/model.joblib
       - MODEL_METADATA_PATH=/app/artifacts/model_metadata.json
       - FEATURE_SCHEMA_PATH=/app/artifacts/feature_schema.json
