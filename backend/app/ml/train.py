@@ -302,9 +302,27 @@ def main() -> int:
     parser.add_argument("--reports-dir", type=str, default="backend/reports", help="Path to save evaluation report JSON.")
     args = parser.parse_args()
 
-    data_dir = Path(args.data_dir)
-    artifacts_dir = Path(args.artifacts_dir)
-    reports_dir = Path(args.reports_dir)
+    def _resolve_dir(p_str: str, rel_sub: str) -> Path:
+        clean_sub = str(p_str).replace("\\", "/")
+        if clean_sub.startswith("./backend/"):
+            clean_sub = clean_sub[10:]
+        elif clean_sub.startswith("backend/"):
+            clean_sub = clean_sub[8:]
+
+        if Path(clean_sub).exists():
+            return Path(clean_sub).resolve()
+        if Path(p_str).exists():
+            return Path(p_str).resolve()
+
+        backend_dir = Path(__file__).resolve().parent.parent.parent
+        alt = backend_dir / rel_sub
+        if alt.exists():
+            return alt.resolve()
+        return (backend_dir / rel_sub).resolve()
+
+    data_dir = _resolve_dir(args.data_dir, "data/processed")
+    artifacts_dir = _resolve_dir(args.artifacts_dir, "artifacts")
+    reports_dir = _resolve_dir(args.reports_dir, "reports")
 
     print("=" * 70)
     print(" PHISHING URL DETECTION - MODULE 2: MODEL TRAINING & EVALUATION")

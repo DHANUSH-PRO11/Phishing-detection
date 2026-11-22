@@ -12,6 +12,29 @@ from typing import List, Union
 from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+BACKEND_DIR = Path(__file__).resolve().parent.parent.parent  # .../backend
+REPO_ROOT = BACKEND_DIR.parent
+
+
+def _resolve_dir(sub_name: str) -> str:
+    """Safely resolves subdirectories (artifacts, data, reports) relative to backend."""
+    candidates = [
+        BACKEND_DIR / sub_name,
+        REPO_ROOT / "backend" / sub_name,
+        Path(f"backend/{sub_name}"),
+        Path(sub_name),
+    ]
+    for c in candidates:
+        if c.exists():
+            return str(c.resolve())
+    return str((BACKEND_DIR / sub_name).resolve())
+
+
+def _resolve_default_db_url() -> str:
+    """Resolves default SQLite database URL to an absolute posix path."""
+    db_file = Path(_resolve_dir("data")) / "phishing_detector.db"
+    return f"sqlite:///{db_file.as_posix()}"
+
 
 class Settings(BaseSettings):
     """Core application settings."""
@@ -29,20 +52,33 @@ class Settings(BaseSettings):
     MAX_URL_LENGTH: int = Field(default=2048)
 
     # Persistence: SQLite default, swappable for PostgreSQL
-    DATABASE_URL: str = Field(default="sqlite:///./backend/data/phishing_detector.db")
+    DATABASE_URL: str = Field(default_factory=_resolve_default_db_url)
     DB_POOL_SIZE: int = Field(default=20)
     DB_MAX_OVERFLOW: int = Field(default=30)
     DB_POOL_TIMEOUT: int = Field(default=30)
 
     # ML Artifacts and Reports
-    MODEL_DIR: str = Field(default="backend/artifacts")
-    REPORTS_DIR: str = Field(default="backend/reports")
+    MODEL_DIR: str = Field(default_factory=lambda: _resolve_dir("artifacts"))
+    REPORTS_DIR: str = Field(default_factory=lambda: _resolve_dir("reports"))
 
     model_config = SettingsConfigDict(
-        env_file=".env",
+        env_file=(".env", "backend/.env", "../.env"),
         env_file_encoding="utf-8",
         extra="ignore"
     )
+
+    @field_validator("DATABASE_URL", mode="before")
+    @classmethod
+    def normalize_database_url(cls, v: str) -> str:
+        if isinstance(v, str) and v.startswith("sqlite:///./backend/data/"):
+            clean_name = v.replace("sqlite:///./backend/data/", "")
+            resolved = Path(_resolve_dir("data")) / clean_name
+            return f"sqlite:///{resolved.as_posix()}"
+        elif isinstance(v, str) and v.startswith("sqlite:///backend/data/"):
+            clean_name = v.replace("sqlite:///backend/data/", "")
+            resolved = Path(_resolve_dir("data")) / clean_name
+            return f"sqlite:///{resolved.as_posix()}"
+        return v
 
     @field_validator("ALLOWED_ORIGINS", mode="before")
     @classmethod

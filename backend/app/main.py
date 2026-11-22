@@ -96,7 +96,7 @@ def create_application() -> FastAPI:
                 try:
                     if int(content_length) > self.max_bytes:
                         return JSONResponse(
-                            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+                            status_code=status.HTTP_413_CONTENT_TOO_LARGE,
                             content={
                                 "error": "Payload Too Large",
                                 "detail": f"Request body exceeds the maximum permitted size of {self.max_bytes // 1024} KB.",
@@ -130,7 +130,7 @@ def create_application() -> FastAPI:
     @app.exception_handler(ValueError)
     async def value_error_handler(request: Request, exc: ValueError) -> JSONResponse:
         return JSONResponse(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
             content={"error": "Validation Error", "detail": str(exc)},
         )
 

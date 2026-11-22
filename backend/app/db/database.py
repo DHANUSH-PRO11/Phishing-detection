@@ -8,7 +8,7 @@ PostgreSQL via the DATABASE_URL environment variable.
 
 from __future__ import annotations
 from pathlib import Path
-from typing import Generator
+from typing import Any, Generator
 from sqlalchemy import create_engine, event
 from sqlalchemy.orm import declarative_base, sessionmaker, Session
 from backend.app.core.config import settings
@@ -70,4 +70,5 @@ def get_db() -> Generator[Session, None, None]:
 
 def init_db() -> None:
     """Creates all database tables defined in Base metadata."""
+    from backend.app.db import models  # noqa: F401 - ensure models are registered
     Base.metadata.create_all(bind=engine)

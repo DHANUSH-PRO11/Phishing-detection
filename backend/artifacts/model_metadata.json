@@ -1,8 +1,8 @@
 {
   "model_name": "LogisticRegression_Baseline",
-  "algorithm": "LogisticRegressionBaseline",
+  "algorithm": "LogisticRegression",
   "optimal_threshold": 0.5,
-  "trained_timestamp": "2026-10-25T19:57:27.561420+00:00",
+  "trained_timestamp": "2026-11-22T17:45:49.025061+00:00",
   "random_seed": 42,
   "dataset_sizes": {
     "train_samples": 84,

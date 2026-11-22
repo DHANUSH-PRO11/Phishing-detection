@@ -29,6 +29,7 @@ from backend.app.ml.model_loader import (
     ModelArtifacts,
     ModelNotFoundError,
     SchemaValidationError,
+    DEFAULT_ARTIFACTS_DIR,
 )
 
 
@@ -137,7 +138,7 @@ def test_load_model_missing_directory_raises_informative_error(tmp_path: Path):
 
 def test_load_model_schema_mismatch_raises_error(tmp_path: Path):
     # Copy valid model but corrupt feature_schema.json
-    artifacts_dir = Path("backend/artifacts")
+    artifacts_dir = DEFAULT_ARTIFACTS_DIR
     test_artifacts = tmp_path / "corrupted_schema"
     test_artifacts.mkdir(parents=True)
 

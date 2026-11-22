@@ -59,17 +59,39 @@ def main() -> int:
 
     args = parser.parse_args()
 
-    print_banner("PHISHING URL DETECTION - MODULE 1: DATASET PIPELINE")
-    print(f"Raw Data Path:   {args.raw_path}")
-    print(f"Output Directory:{args.output_dir}")
-    print(f"Reports Directory:{args.reports_dir}")
+    def _resolve(p_str: str, rel_sub: str) -> str:
+        clean_sub = p_str.replace("\\", "/")
+        if clean_sub.startswith("./backend/"):
+            clean_sub = clean_sub[10:]
+        elif clean_sub.startswith("backend/"):
+            clean_sub = clean_sub[8:]
 
-    pipeline = DatasetPipeline(raw_data_path=args.raw_path)
+        if Path(clean_sub).exists():
+            return str(Path(clean_sub).resolve())
+        if Path(p_str).exists():
+            return str(Path(p_str).resolve())
+
+        backend_dir = Path(__file__).resolve().parent.parent
+        alt = backend_dir / rel_sub
+        if alt.exists():
+            return str(alt.resolve())
+        return str((backend_dir / rel_sub).resolve())
+
+    raw_path = _resolve(args.raw_path, "data/raw/urls.csv")
+    output_dir = _resolve(args.output_dir, "data/processed")
+    reports_dir = _resolve(args.reports_dir, "reports")
+
+    print_banner("PHISHING URL DETECTION - MODULE 1: DATASET PIPELINE")
+    print(f"Raw Data Path:   {raw_path}")
+    print(f"Output Directory:{output_dir}")
+    print(f"Reports Directory:{reports_dir}")
+
+    pipeline = DatasetPipeline(raw_data_path=raw_path)
 
     try:
         results = pipeline.run_pipeline(
-            output_dir=args.output_dir,
-            reports_dir=args.reports_dir
+            output_dir=output_dir,
+            reports_dir=reports_dir
         )
     except Exception as exc:
         print(f"\n[ERROR] Dataset pipeline failed: {exc}", file=sys.stderr)

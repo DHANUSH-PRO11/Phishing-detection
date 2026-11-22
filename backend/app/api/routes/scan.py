@@ -36,7 +36,7 @@ def scan_url_endpoint(payload: ScanRequest, db: Session = Depends(get_db)) -> Sc
         scan_result = scan_url(payload.url)
     except ValueError as exc:
         raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
             detail=str(exc)
         ) from exc
     except ModelNotFoundError as exc:

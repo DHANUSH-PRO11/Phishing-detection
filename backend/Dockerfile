@@ -17,11 +17,16 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy application source code, dataset, and artifacts
+# Copy application source code, dataset, artifacts, and migrations
 COPY app/ ./app/
 COPY artifacts/ ./artifacts/
 COPY data/ ./data/
 COPY reports/ ./reports/
+COPY alembic/ ./alembic/
+COPY alembic.ini .
+
+# Create symlink so 'from backend.app...' and 'from app...' both work in container
+RUN ln -s /app /app/backend
 
 # Create non-privileged service user
 RUN useradd -m -u 1000 appuser && \

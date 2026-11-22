@@ -1,6 +1,6 @@
 {
   "audit": {
-    "source_path": "backend\\data\\raw\\urls.csv",
+    "source_path": "G:\\ML\\Phishing-detection\\backend\\data\\raw\\urls.csv",
     "total_raw_rows": 120,
     "missing_rows_dropped": 0,
     "empty_url_rows_dropped": 0,

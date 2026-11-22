@@ -177,7 +177,20 @@ class DatasetPipeline:
     """
 
     def __init__(self, raw_data_path: str | Path | None = None) -> None:
-        self.raw_data_path = Path(raw_data_path) if raw_data_path else Path("backend/data/raw/urls.csv")
+        if raw_data_path:
+            self.raw_data_path = Path(raw_data_path)
+        else:
+            backend_dir = Path(__file__).resolve().parent.parent.parent
+            candidates = [
+                backend_dir / "data" / "raw" / "urls.csv",
+                Path("backend/data/raw/urls.csv"),
+                Path("data/raw/urls.csv"),
+            ]
+            self.raw_data_path = candidates[0]
+            for c in candidates:
+                if c.exists():
+                    self.raw_data_path = c.resolve()
+                    break
         self.feature_extractor = FeatureExtractor()
 
     def create_initial_seed_dataset(self) -> Path:
@@ -393,8 +406,8 @@ class DatasetPipeline:
 
     def run_pipeline(
         self,
-        output_dir: str | Path = "backend/data/processed",
-        reports_dir: str | Path = "backend/reports"
+        output_dir: str | Path | None = None,
+        reports_dir: str | Path | None = None
     ) -> Dict[str, Any]:
         """
         Executes end-to-end dataset preparation and artifact generation:
@@ -404,8 +417,9 @@ class DatasetPipeline:
         4. Save train, val, test CSVs and feature dictionary JSON
         5. Generate dataset quality report
         """
-        out_path = Path(output_dir)
-        rep_path = Path(reports_dir)
+        backend_dir = Path(__file__).resolve().parent.parent.parent
+        out_path = Path(output_dir) if output_dir else (backend_dir / "data" / "processed")
+        rep_path = Path(reports_dir) if reports_dir else (backend_dir / "reports")
         out_path.mkdir(parents=True, exist_ok=True)
         rep_path.mkdir(parents=True, exist_ok=True)
 

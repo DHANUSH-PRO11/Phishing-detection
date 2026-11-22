@@ -9,9 +9,10 @@ and informative error handling when model artifacts are missing.
 from __future__ import annotations
 import json
 import logging
+import os
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 import joblib
 import warnings
 import numpy as np
@@ -22,7 +23,29 @@ from backend.app.ml.features import FeatureExtractor, FEATURE_NAMES
 
 logger = logging.getLogger(__name__)
 
-DEFAULT_ARTIFACTS_DIR = Path("backend/artifacts")
+
+def _resolve_default_artifacts_dir() -> Path:
+    """Safely locates model artifacts whether run from root, backend/, or container."""
+    env_dir = os.environ.get("MODEL_DIR")
+    if env_dir:
+        p = Path(env_dir)
+        if (p / "model.joblib").exists():
+            return p.resolve()
+
+    backend_dir = Path(__file__).resolve().parent.parent.parent
+    candidates = [
+        backend_dir / "artifacts",
+        Path("backend/artifacts"),
+        Path("artifacts"),
+        Path("/app/artifacts"),
+    ]
+    for c in candidates:
+        if (c / "model.joblib").exists():
+            return c.resolve()
+    return (backend_dir / "artifacts").resolve()
+
+
+DEFAULT_ARTIFACTS_DIR = _resolve_default_artifacts_dir()
 
 
 class ModelNotFoundError(FileNotFoundError):

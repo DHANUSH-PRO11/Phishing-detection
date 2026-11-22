@@ -1,5 +1,5 @@
 {
-  "timestamp_utc": "2026-10-25T19:57:27.561420+00:00",
+  "timestamp_utc": "2026-11-22T17:45:49.025061+00:00",
   "random_seed": 42,
   "environment": {
     "python_version": "3.14.7",
@@ -315,9 +315,9 @@
         {
           "threshold": 0.1,
           "recall": 1.0,
-          "precision": 0.9,
-          "f1": 0.9474,
-          "fpr": 0.1111
+          "precision": 0.8182,
+          "f1": 0.9,
+          "fpr": 0.2222
         },
         {
           "threshold": 0.2,
@@ -329,9 +329,9 @@
         {
           "threshold": 0.3,
           "recall": 1.0,
-          "precision": 1.0,
-          "f1": 1.0,
-          "fpr": 0.0
+          "precision": 0.9,
+          "f1": 0.9474,
+          "fpr": 0.1111
         },
         {
           "threshold": 0.4,
@@ -370,9 +370,9 @@
         },
         {
           "threshold": 0.9,
-          "recall": 1.0,
+          "recall": 0.6667,
           "precision": 1.0,
-          "f1": 1.0,
+          "f1": 0.8,
           "fpr": 0.0
         }
       ],
