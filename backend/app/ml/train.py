@@ -55,7 +55,7 @@ from backend.app.ml.estimators import LogisticRegressionBaseline, RandomForestBa
 def get_logistic_regression() -> Any:
     try:
         from sklearn.linear_model import LogisticRegression
-        return LogisticRegression(C=1.0, penalty="l2", solver="liblinear", class_weight="balanced", random_state=RANDOM_SEED, max_iter=1000)
+        return LogisticRegression(C=1.0, solver="liblinear", class_weight="balanced", random_state=RANDOM_SEED, max_iter=1000)
     except (ImportError, OSError):
         return LogisticRegressionBaseline(C=1.0, max_iter=1000, random_state=RANDOM_SEED)
 
